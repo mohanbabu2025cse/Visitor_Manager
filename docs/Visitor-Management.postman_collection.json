@@ -1,0 +1,464 @@
+{
+  "info": {
+    "name": "Visitor Management - classroom demonstration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Create flat",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/flats",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"number\": \"DEMO-{{runId}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set(\"flatId\", pm.response.json().id);"
+            ]
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set(\"runId\", Date.now().toString());"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. List flats",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/flats"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Create resident",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/residents",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Anu\",\n  \"phone\": \"9876543210\",\n  \"flatId\": \"{{flatId}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set(\"residentId\", pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. List residents",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/residents"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Pre-approve visitor",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/residents/{{residentId}}/approvals",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"visitorName\": \"Ravi\",\n  \"visitorPhone\": \"9876543211\",\n  \"purpose\": \"Family visit\",\n  \"expectedAt\": \"{{arrival}}\",\n  \"expiresAt\": \"{{expiry}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set(\"approvalId\", pm.response.json().id);",
+              "pm.collectionVariables.set(\"otp\", pm.response.json().otp);"
+            ]
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function local(d) { const shifted = new Date(d.getTime() - d.getTimezoneOffset()*60000); return shifted.toISOString().slice(0,19); }",
+              "pm.collectionVariables.set(\"arrival\", local(new Date(Date.now()-60000)));",
+              "pm.collectionVariables.set(\"expiry\", local(new Date(Date.now()+3600000)));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. View resident visits",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/residents/{{residentId}}/approvals"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Reject wrong OTP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/security/entries",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"approvalId\": \"{{approvalId}}\",\n  \"otp\": \"{{wrongOtp}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set(\"wrongOtp\", pm.collectionVariables.get(\"otp\") === \"000000\" ? \"111111\" : \"000000\");"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Validate and record entry",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/security/entries",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"approvalId\": \"{{approvalId}}\",\n  \"otp\": \"{{otp}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Entry time recorded\", () => pm.expect(pm.response.json().entryTime).to.be.a(\"string\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Reject reuse",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/security/entries",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"approvalId\": \"{{approvalId}}\",\n  \"otp\": \"{{otp}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Create pass to revoke",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/residents/{{residentId}}/approvals",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"visitorName\": \"Ravi\",\n  \"visitorPhone\": \"9876543211\",\n  \"purpose\": \"Family visit\",\n  \"expectedAt\": \"{{arrival}}\",\n  \"expiresAt\": \"{{expiry}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set(\"approvalId\", pm.response.json().id);",
+              "pm.collectionVariables.set(\"otp\", pm.response.json().otp);"
+            ]
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "function local(d) { const shifted = new Date(d.getTime() - d.getTimezoneOffset()*60000); return shifted.toISOString().slice(0,19); }",
+              "pm.collectionVariables.set(\"arrival\", local(new Date(Date.now()-60000)));",
+              "pm.collectionVariables.set(\"expiry\", local(new Date(Date.now()+3600000)));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Revoke pending pass",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": "{{baseUrl}}/api/residents/{{residentId}}/approvals/{{approvalId}}/revoke"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Reject revoked pass",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/security/entries",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"approvalId\": \"{{approvalId}}\",\n  \"otp\": \"{{otp}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Reject blank flat",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/flats",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"number\": \"\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. Reject missing resident",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/residents/999999999/approvals"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15. Reject duplicate flat",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/flats",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"number\": \"DEMO-{{runId}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16. Reject invalid window",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/residents/{{residentId}}/approvals",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"visitorName\": \"Ravi\",\n  \"visitorPhone\": \"9876543211\",\n  \"purpose\": \"Family visit\",\n  \"expectedAt\": \"{{expiry}}\",\n  \"expiresAt\": \"{{arrival}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
